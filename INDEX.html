@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제조업 생산 관리 프로그램</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 h-full flex flex-col font-sans antialiased overflow-x-hidden">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900 text-white shadow-md z-30 sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-industry text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">SmartFactory Pro</h1>
+                    <p class="text-xs text-slate-400">제조업 통합 생산 및 사내/외주 공정 관리 시스템</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div id="system-time" class="hidden md:block text-xs font-medium text-slate-300 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <!-- Dynamic Time -->
+                </div>
+                <button onclick="openDataModal('order')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>신규 생산/발주 등록</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-64 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 flex flex-col justify-between shrink-0">
+            <nav class="space-y-1.5">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-indigo-50 text-indigo-600">
+                    <i class="fa-solid fa-chart-pie w-5 text-center"></i>
+                    <span>대시보드 요약</span>
+                </button>
+                <button onclick="switchTab('ordered')" id="nav-ordered" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-folder-open w-5 text-center text-amber-500"></i>
+                    <span>발주된 제품 (대기)</span>
+                </button>
+                <button onclick="switchTab('process')" id="nav-process" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-folder-tree w-5 text-center text-blue-500"></i>
+                    <span>진행중인 제품</span>
+                </button>
+                <button onclick="switchTab('completed')" id="nav-completed" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-folder-closed w-5 text-center text-emerald-500"></i>
+                    <span>완료된 제품 (아카이브)</span>
+                </button>
+                <button onclick="switchTab('material')" id="nav-material" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-boxes-stacked w-5 text-center"></i>
+                    <span>자재 입고 및 발주</span>
+                </button>
+                <button onclick="switchTab('clients')" id="nav-clients" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-building-user w-5 text-center"></i>
+                    <span>납품처 및 세부품목 관리</span>
+                </button>
+                <button onclick="switchTab('shipping')" id="nav-shipping" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-truck-fast w-5 text-center"></i>
+                    <span>포장 및 출하 관리</span>
+                </button>
+            </nav>
+
+            <div class="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-400 space-y-2">
+                <div class="flex justify-between items-center">
+                    <span>시스템 상태</span>
+                    <span class="flex items-center text-emerald-600 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span> 정상 작동
+                    </span>
+                </div>
+                <div class="text-[11px] text-slate-400">폴더별(발주/진행/완료) 제품 분리 관리 지원</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 overflow-hidden flex flex-col">
+            
+            <!-- Tab 1: Dashboard -->
+            <section id="tab-dashboard" class="tab-content flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">생산 종합 대시보드</h2>
+                        <p class="text-sm text-slate-500">실시간 생산 현황 및 폴더별(발주/진행/완료) 제품 분포를 확인합니다.</p>
+                    </div>
+                    <button onclick="loadInitialData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 transition">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> 샘플 데이터 초기화
+                    </button>
+                </div>
+
+                <!-- KPI Cards Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-amber-50/60 border border-amber-100 p-5 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-amber-600 uppercase tracking-wider">발주된 제품 (대기)</p>
+                            <h3 id="kpi-ordered-count" class="text-2xl font-bold text-amber-900 mt-1">0</h3>
+                        </div>
+                        <div class="bg-amber-500 text-white p-3 rounded-xl shadow-sm">
+                            <i class="fa-solid fa-folder-open text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50/60 border border-blue-100 p-5 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-blue-600 uppercase tracking-wider">진행중인 제품</p>
+                            <h3 id="kpi-progress-count" class="text-2xl font-bold text-blue-900 mt-1">0</h3>
+                        </div>
+                        <div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">
+                            <i class="fa-solid fa-folder-tree text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="bg-emerald-50/60 border border-emerald-100 p-5 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-emerald-600 uppercase tracking-wider">완료된 제품</p>
+                            <h3 id="kpi-completed-count" class="text-2xl font-bold text-emerald-900 mt-1">0</h3>
+                        </div>
+                        <div class="bg-emerald-600 text-white p-3 rounded-xl shadow-sm">
+                            <i class="fa-solid fa-folder-closed text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="bg-purple-50/60 border border-purple-100 p-5 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-purple-600 uppercase tracking-wider">총 등록 오더</p>
+                            <h3 id="kpi-total-orders" class="text-2xl font-bold text-purple-900 mt-1">0</h3>
+                        </div>
+                        <div class="bg-purple-600 text-white p-3 rounded-xl shadow-sm">
+                            <i class="fa-solid fa-clipboard-list text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Production List Table -->
+                <div class="space-y-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-clock-rotate-left mr-2 text-indigo-600"></i> 최근 생산 오더 폴더별 요약
+                    </h3>
+                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
+                                <tr>
+                                    <th class="p-3">오더 번호</th>
+                                    <th class="p-3">납품처</th>
+                                    <th class="p-3">세부품목명</th>
+                                    <th class="p-3">수량</th>
+                                    <th class="p-3">현재 폴더 상태</th>
+                                    <th class="p-3">납기일자</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-recent-table" class="divide-y divide-slate-200 bg-white">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 2: Ordered / Pending Folder (발주된 제품) -->
+            <section id="tab-ordered" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-folder-open mr-2 text-amber-500"></i> 발주된 제품 폴더 (대기 중)
+                        </h2>
+                        <p class="text-sm text-slate-500">신규 발주되어 생산 개시를 대기 중인 오더 목록입니다. '생산 시작' 시 진행중인 제품 폴더로 이동합니다.</p>
+                    </div>
+                    <button onclick="openDataModal('order')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>신규 생산/발주 등록</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
+                            <tr>
+                                <th class="p-3.5">오더 번호</th>
+                                <th class="p-3.5">납품처</th>
+                                <th class="p-3.5">세부 품목명</th>
+                                <th class="p-3.5">수량</th>
+                                <th class="p-3.5">담당자</th>
+                                <th class="p-3.5">납기일자</th>
+                                <th class="p-3.5 text-right">폴더 이동 / 관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordered-table-body" class="divide-y divide-slate-200 bg-white">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tab 3: In Progress Folder & Process Monitoring (진행중인 제품) -->
+            <section id="tab-process" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-folder-tree mr-2 text-blue-500"></i> 진행중인 제품 폴더 및 공정 모니터링
+                        </h2>
+                        <p class="text-sm text-slate-500">사내 및 외주 공정을 거치고 있는 오더의 단계별 현황입니다. 최종 공정 완료 시 완료된 제품 폴더로 자동 이동됩니다.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button onclick="setProcessView('kanban')" id="view-btn-kanban" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-600 shadow-sm transition">
+                            <i class="fa-solid fa-columns mr-1"></i> 칸반 보드
+                        </button>
+                        <button onclick="setProcessView('table')" id="view-btn-table" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 transition">
+                            <i class="fa-solid fa-table-list mr-1"></i> 테이블 형태
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Kanban Board View -->
+                <div id="process-kanban-view" class="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 pb-4">
+                    <!-- Populated dynamically via JS -->
+                </div>
+
+                <!-- Table View (Hidden by default) -->
+                <div id="process-table-view" class="hidden flex-1 overflow-y-auto border border-slate-200 rounded-xl pr-1">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase sticky top-0">
+                            <tr>
+                                <th class="p-3.5">오더번호</th>
+                                <th class="p-3.5">납품처</th>
+                                <th class="p-3.5">세부 품목명</th>
+                                <th class="p-3.5">수량</th>
+                                <th class="p-3.5">전체 공정 경로 (사내/외주)</th>
+                                <th class="p-3.5">현재 공정 단계</th>
+                                <th class="p-3.5 text-right">상태 변경</th>
+                            </tr>
+                        </thead>
+                        <tbody id="process-table-body" class="divide-y divide-slate-200 bg-white">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tab 4: Completed Folder / Archive (완료된 제품) -->
+            <section id="tab-completed" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-folder-closed mr-2 text-emerald-500"></i> 완료된 제품 폴더 (아카이브)
+                        </h2>
+                        <p class="text-sm text-slate-500">모든 제조 공정 및 품질 검사가 완료되어 출하를 대기하거나 완료된 제품 아카이브입니다.</p>
+                    </div>
+                    <div class="text-xs text-slate-500 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 font-medium">
+                        총 완료된 제품: <span id="completed-folder-count">0</span>건
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
+                            <tr>
+                                <th class="p-3.5">오더 번호</th>
+                                <th class="p-3.5">납품처</th>
+                                <th class="p-3.5">세부 품목명</th>
+                                <th class="p-3.5">수량</th>
+                                <th class="p-3.5">담당자</th>
+                                <th class="p-3.5">완료일자 / 납기</th>
+                                <th class="p-3.5 text-right">폴더 복원 / 관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="completed-table-body" class="divide-y divide-slate-200 bg-white">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tab 5: Material & Order Management -->
+            <section id="tab-material" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">자재 입고 및 발주 관리</h2>
+                        <p class="text-sm text-slate-500">원자재 재고 현황을 모니터링하고 신규 발주 및 입고를 처리합니다.</p>
+                    </div>
+                    <button onclick="openDataModal('material')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>자재 발주 등록</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
+                            <tr>
+                                <th class="p-3.5">자재 코드</th>
+                                <th class="p-3.5">자재명</th>
+                                <th class="p-3.5">규격</th>
+                                <th class="p-3.5">현재 재고</th>
+                                <th class="p-3.5">안전 재고</th>
+                                <th class="p-3.5">상태</th>
+                                <th class="p-3.5 text-right">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="material-table-body" class="divide-y divide-slate-200 bg-white">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tab 6: Clients & Sub-Items Management -->
+            <section id="tab-clients" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">납품처 관리 (추가/삭제/수정) 및 세부 품목</h2>
+                        <p class="text-sm text-slate-500">납품처를 자유롭게 추가, 수정, 삭제할 수 있으며 발주 및 오더 등록 시 자동 연동됩니다.</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="openDataModal('client')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>신규 납품처 등록</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="clients-hierarchy-container" class="space-y-4 flex-1">
+                    <!-- Populated via JS -->
+                </div>
+            </section>
+
+            <!-- Tab 7: Packaging & Shipping -->
+            <section id="tab-shipping" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">포장 및 출하 관리</h2>
+                        <p class="text-sm text-slate-500">공정이 완료된 품목의 포장 상태 및 출하 일정을 관리합니다.</p>
+                    </div>
+                    <button onclick="openDataModal('shipping')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>출하 오더 추가</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
+                            <tr>
+                                <th class="p-3.5">출하 번호</th>
+                                <th class="p-3.5">납품처</th>
+                                <th class="p-3.5">세부 품목명</th>
+                                <th class="p-3.5">수량</th>
+                                <th class="p-3.5">출하 예정일</th>
+                                <th class="p-3.5">포장상태</th>
+                                <th class="p-3.5">출하상태</th>
+                                <th class="p-3.5 text-right">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shipping-table-body" class="divide-y divide-slate-200 bg-white">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Generic Modal Dialog for Add/Edit -->
+    <div id="data-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-slate-200 overflow-hidden transform transition-all max-h-[90vh] flex flex-col">
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
+                <h3 id="modal-title" class="text-base font-bold">데이터 등록 / 수정</h3>
+                <button onclick="closeDataModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="generic-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 overflow-y-auto flex-1">
+                <input type="hidden" id="modal-type" value="">
+                <input type="hidden" id="modal-extra-id" value="">
+                <input type="hidden" id="modal-param2" value="">
+                <div id="modal-form-fields" class="space-y-4">
+                    <!-- Populated dynamically via JS -->
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 shrink-0">
+                    <button type="button" onclick="closeDataModal()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">취소</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-500 transition shadow-sm">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Toast Message Box -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Application Script -->
+    <script>
+        // Master Catalog of All Available Process Steps
+        const MASTER_PROCESSES = [
+            { id: 'stage_material', name: '자재준비', icon: 'fa-boxes-packing', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+            { id: 'stage_machining', name: '가공', icon: 'fa-hammer', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+            { id: 'stage_laser', name: '레이저컷팅', icon: 'fa-bolt', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+            { id: 'stage_wire', name: '와이어컷팅', icon: 'fa-wave-square', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+            { id: 'stage_welding', name: '용접', icon: 'fa-fire-flame-curved', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+            { id: 'stage_edm', name: '방전가공', icon: 'fa-bolt-lightning', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+            { id: 'stage_plating', name: '도금', icon: 'fa-gem', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+            { id: 'stage_painting', name: '도장', icon: 'fa-brush', color: 'bg-pink-50 text-pink-700 border-pink-200' },
+            { id: 'stage_engraving', name: '각인', icon: 'fa-signature', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+            { id: 'stage_assembly', name: '정밀 조립', icon: 'fa-screwdriver-wrench', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+            { id: 'stage_inspection', name: '품질 검사', icon: 'fa-clipboard-check', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+            { id: 'stage_shipping_ready', name: '출하 대기', icon: 'fa-truck', color: 'bg-sky-50 text-sky-700 border-sky-200' }
+        ];
+
+        // Default Sample Data with folder status ('ordered' | 'progress' | 'completed')
+        const defaultState = {
+            clients: [
+                { 
+                    id: 'CL-001', 
+                    name: '(주)한국기계 오창공장', 
+                    manager: '김동현 부장', 
+                    phone: '043-555-1234', 
+                    address: '충청북도 청주시 청원구 오창읍 산업단로 45',
+                    subItems: [
+                        { id: 'SUB-101', name: '산업용 자동화 컨트롤러 A타입', code: 'CTRL-A01', desc: '표준형 24채널 제어반' },
+                        { id: 'SUB-102', name: '로봇 암 그리퍼 세트', code: 'GRP-900', desc: '공압식 고정밀 그리퍼' }
+                    ]
+                },
+                { 
+                    id: 'CL-002', 
+                    name: '삼성테크윈 창원사업장', 
+                    manager: '이영수 차장', 
+                    phone: '055-288-9900', 
+                    address: '경상남도 창원시 성산구 상남로 100',
+                    subItems: [
+                        { id: 'SUB-201', name: '정밀 서보모터 어셈블리', code: 'SRV-500W', desc: '고속 회전형 서보 드라이브' },
+                        { id: 'SUB-202', name: '유압 밸브 제어반', code: 'HYD-VALV-2', desc: '대형 프레스 연동형' }
+                    ]
+                },
+                { 
+                    id: 'CL-003', 
+                    name: '(주)현대오토모티브 울산공장', 
+                    manager: '박준호 과장', 
+                    phone: '052-211-4321', 
+                    address: '울산광역시 북구 염포로 800',
+                    subItems: [
+                        { id: 'SUB-301', name: '스마트 센서 모듈 v2', code: 'SNS-M20', desc: '레이저 거리 측정 센서' }
+                    ]
+                },
+                { 
+                    id: 'CL-004', 
+                    name: 'LG전자 평택디지털파크', 
+                    manager: '정수진 팀장', 
+                    phone: '031-610-8877', 
+                    address: '경기도 평택시 진위면 진위로 150',
+                    subItems: [
+                        { id: 'SUB-401', name: '고속 Conveyor Drive Unit', code: 'CONV-HD', desc: '인버터 일체형 드라이브' }
+                    ]
+                }
+            ],
+            materials: [
+                { id: 'M-001', name: '알루미늄 프로파일', spec: '40x40 표준형', stock: 120, safety: 50 },
+                { id: 'M-002', name: 'SUS 볼트 & 너트 세트', spec: 'M6 x 20mm', stock: 35, safety: 100 },
+                { id: 'M-003', name: '구동 모터 드라이버', spec: 'DC 24V 10A', stock: 15, safety: 20 },
+                { id: 'M-004', name: 'PCB 컨트롤러 보드', spec: 'ARM Cortex-M4', stock: 8, safety: 15 }
+            ],
+            orders: [
+                { 
+                    id: 'ORD-2026-001', 
+                    folder: 'progress', // 'ordered' | 'progress' | 'completed'
+                    client: '(주)한국기계 오창공장', 
+                    itemName: '산업용 자동화 컨트롤러 A타입', 
+                    qty: 50, 
+                    processSteps: [
+                        { id: 'stage_material', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_machining', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_laser', type: 'outsource', outsourceVendor: '(주)태성레이저' },
+                        { id: 'stage_welding', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_inspection', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_shipping_ready', type: 'inhouse', outsourceVendor: '' }
+                    ], 
+                    currentStageIndex: 2, 
+                    manager: '김철수', 
+                    dueDate: '2026-10-25' 
+                },
+                { 
+                    id: 'ORD-2026-002', 
+                    folder: 'progress', 
+                    client: '삼성테크윈 창원사업장', 
+                    itemName: '정밀 서보모터 어셈블리', 
+                    qty: 20, 
+                    processSteps: [
+                        { id: 'stage_material', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_machining', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_wire', type: 'outsource', outsourceVendor: '대경와이어텍' },
+                        { id: 'stage_plating', type: 'outsource', outsourceVendor: '한영도금공업' },
+                        { id: 'stage_assembly', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_inspection', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_shipping_ready', type: 'inhouse', outsourceVendor: '' }
+                    ], 
+                    currentStageIndex: 1, 
+                    manager: '박영희', 
+                    dueDate: '2026-10-28' 
+                },
+                { 
+                    id: 'ORD-2026-003', 
+                    folder: 'ordered', 
+                    client: '(주)현대오토모티브 울산공장', 
+                    itemName: '스마트 센서 모듈 v2', 
+                    qty: 100, 
+                    processSteps: [
+                        { id: 'stage_material', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_machining', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_painting', type: 'outsource', outsourceVendor: '신화도장산업' },
+                        { id: 'stage_engraving', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_inspection', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_shipping_ready', type: 'inhouse', outsourceVendor: '' }
+                    ], 
+                    currentStageIndex: 0, 
+                    manager: '이지훈', 
+                    dueDate: '2026-11-02' 
+                },
+                { 
+                    id: 'ORD-2026-004', 
+                    folder: 'completed', 
+                    client: 'LG전자 평택디지털파크', 
+                    itemName: '고속 Conveyor Drive Unit', 
+                    qty: 15, 
+                    processSteps: [
+                        { id: 'stage_material', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_machining', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_inspection', type: 'inhouse', outsourceVendor: '' },
+                        { id: 'stage_shipping_ready', type: 'inhouse', outsourceVendor: '' }
+                    ], 
+                    currentStageIndex: 3, 
+                    manager: '한정수', 
+                    dueDate: '2026-10-15' 
+                }
+            ],
+            shipping: [
+                { id: 'SHIP-101', destination: '(주)한국기계 오창공장', itemName: '산업용 자동화 컨트롤러 A타입', qty: 8, shipDate: '2026-10-19', packStatus: '포장완료', shipStatus: '출하대기' },
+                { id: 'SHIP-102', destination: '삼성테크윈 창원사업장', itemName: '정밀 서보모터 어셈블리', qty: 15, shipDate: '2026-10-20', packStatus: '포장진행중', shipStatus: '준비중' }
+            ]
+        };
+
+        // Load or initialize state
+        let appData = JSON.parse(localStorage.getItem('smart_factory_folder_data_v2')) || defaultState;
+
+        function saveAppData() {
+            localStorage.setItem('smart_factory_folder_data_v2', JSON.stringify(appData));
+            renderCurrentTab();
+        }
+
+        function loadInitialData() {
+            appData = JSON.parse(JSON.stringify(defaultState));
+            saveAppData();
+            showToast('샘플 데이터가 초기화되었습니다.', 'success');
+        }
+
+        // Live Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('system-time').innerText = now.toLocaleString('ko-KR');
+        }, 1000);
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-50', 'text-indigo-600');
+                btn.classList.add('text-slate-600', 'hover:bg-slate-50');
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-50');
+                activeBtn.classList.add('bg-indigo-50', 'text-indigo-600');
+            }
+
+            renderCurrentTab();
+        }
+
+        function renderCurrentTab() {
+            renderDashboard();
+            renderOrderedFolder();
+            renderProcess();
+            renderCompletedFolder();
+            renderMaterials();
+            renderClientsHierarchy();
+            renderShipping();
+        }
+
+        // --- 1. Dashboard Renderer ---
+        function renderDashboard() {
+            const totalOrders = appData.orders.length;
+            const orderedCount = appData.orders.filter(o => o.folder === 'ordered').length;
+            const progressCount = appData.orders.filter(o => o.folder === 'progress').length;
+            const completedCount = appData.orders.filter(o => o.folder === 'completed').length;
+
+            document.getElementById('kpi-ordered-count').innerText = orderedCount;
+            document.getElementById('kpi-progress-count').innerText = progressCount;
+            document.getElementById('kpi-completed-count').innerText = completedCount;
+            document.getElementById('kpi-total-orders').innerText = totalOrders;
+
+            // Recent orders table
+            const recentTable = document.getElementById('dashboard-recent-table');
+            recentTable.innerHTML = appData.orders.slice(0, 5).map(order => {
+                let folderBadge = '';
+                if(order.folder === 'ordered') folderBadge = '<span class="px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-full">발주된 제품 (대기)</span>';
+                else if(order.folder === 'progress') folderBadge = '<span class="px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-full">진행중인 제품</span>';
+                else folderBadge = '<span class="px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">완료된 제품</span>';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3 font-medium text-slate-800">${order.id}</td>
+                        <td class="p-3 text-slate-700 font-medium">${order.client}</td>
+                        <td class="p-3">${order.itemName}</td>
+                        <td class="p-3">${order.qty} 개</td>
+                        <td class="p-3">${folderBadge}</td>
+                        <td class="p-3 text-slate-500">${order.dueDate}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --- 2. Ordered Folder (발주된 제품) ---
+        function renderOrderedFolder() {
+            const tbody = document.getElementById('ordered-table-body');
+            const orderedOrders = appData.orders.filter(o => o.folder === 'ordered');
+
+            if(orderedOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">발주되어 대기 중인 제품이 없습니다. 신규 오더를 등록하세요.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = orderedOrders.map(order => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3.5 font-medium text-slate-800">${order.id}</td>
+                    <td class="p-3.5 font-semibold text-slate-700">${order.client}</td>
+                    <td class="p-3.5 text-slate-900 font-medium">${order.itemName}</td>
+                    <td class="p-3.5">${order.qty} 개</td>
+                    <td class="p-3.5 text-slate-600">${order.manager}</td>
+                    <td class="p-3.5 text-slate-500">${order.dueDate}</td>
+                    <td class="p-3.5 text-right space-x-2">
+                        <button onclick="moveOrderFolder('${order.id}', 'progress')" class="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition shadow-sm">
+                            <i class="fa-solid fa-play mr-1"></i> 생산 시작 (진행폴더로 이동)
+                        </button>
+                        <button onclick="deleteOrder('${order.id}')" class="text-slate-400 hover:text-rose-600 transition p-1" title="삭제"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // --- 3. Process Monitoring & In-Progress Folder (진행중인 제품) ---
+        let currentProcessView = 'kanban';
+
+        function setProcessView(viewType) {
+            currentProcessView = viewType;
+            const kanbanView = document.getElementById('process-kanban-view');
+            const tableView = document.getElementById('process-table-view');
+            const btnKanban = document.getElementById('view-btn-kanban');
+            const btnTable = document.getElementById('view-btn-table');
+
+            if (viewType === 'kanban') {
+                kanbanView.classList.remove('hidden');
+                kanbanView.classList.add('flex');
+                tableView.classList.add('hidden');
+                btnKanban.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+                btnKanban.classList.remove('text-slate-600');
+                btnTable.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+                btnTable.classList.add('text-slate-600');
+            } else {
+                kanbanView.classList.add('hidden');
+                kanbanView.classList.remove('flex');
+                tableView.classList.remove('hidden');
+                btnTable.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+                btnTable.classList.remove('text-slate-600');
+                btnKanban.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+                btnKanban.classList.add('text-slate-600');
+            }
+            renderProcess();
+        }
+
+        function renderProcess() {
+            const kanbanContainer = document.getElementById('process-kanban-view');
+            const progressOrders = appData.orders.filter(o => o.folder === 'progress');
+            
+            kanbanContainer.innerHTML = MASTER_PROCESSES.map(stage => {
+                const ordersInStage = progressOrders.filter(o => {
+                    const currentStep = o.processSteps[o.currentStageIndex] || o.processSteps[0];
+                    return currentStep.id === stage.id;
+                });
+                return `
+                    <div class="w-80 shrink-0 bg-slate-100/80 rounded-2xl border border-slate-200 p-3.5 flex flex-col h-full">
+                        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+                            <span class="text-xs font-bold text-slate-700 flex items-center">
+                                <i class="fa-solid ${stage.icon} mr-2 text-indigo-600"></i> ${stage.name}
+                            </span>
+                            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">${ordersInStage.length}</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+                            ${ordersInStage.length === 0 ? '<div class="text-center py-8 text-xs text-slate-400">진행중인 오더 없음</div>' : ''}
+                            ${ordersInStage.map(order => {
+                                const currentStep = order.processSteps[order.currentStageIndex];
+                                const isOutsource = currentStep && currentStep.type === 'outsource';
+                                
+                                // Check if previous or all preceding steps are inhouse and completed
+                                const allPreviousInhouseCompleted = order.processSteps.slice(0, order.currentStageIndex).every(s => s.type === 'inhouse');
+                                const hasInhouseCompletedSoFar = order.currentStageIndex > 0 && !isOutsource;
+
+                                const pathBadges = order.processSteps.map((step, idx) => {
+                                    const stepInfo = MASTER_PROCESSES.find(m => m.id === step.id);
+                                    const isCurrent = idx === order.currentStageIndex;
+                                    const isPassed = idx < order.currentStageIndex;
+                                    
+                                    let badgeBg = 'bg-slate-200 text-slate-700';
+                                    if (isCurrent) {
+                                        badgeBg = step.type === 'outsource' ? 'bg-purple-600 text-white font-bold ring-2 ring-purple-300' : 'bg-blue-600 text-white font-bold ring-2 ring-blue-300';
+                                    } else if (isPassed) {
+                                        badgeBg = step.type === 'outsource' ? 'bg-purple-200 text-purple-800' : 'bg-emerald-600 text-white';
+                                    }
+                                    return `<span class="px-1.5 py-0.5 text-[10px] rounded ${badgeBg}" title="${stepInfo?.name || step.id} (${step.type === 'outsource' ? '외주:' + step.outsourceVendor : '사내 진행'})">${stepInfo?.name?.[0] || step.id[0]}</span>`;
+                                }).join(' ');
+
+                                return `
+                                    <div class="bg-white p-4 rounded-xl border ${isOutsource ? 'border-purple-200 bg-purple-50/20' : 'border-slate-200/80'} shadow-sm hover:shadow-md transition space-y-2">
+                                        <div class="flex justify-between items-start">
+                                            <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">${order.id}</span>
+                                            <div class="flex items-center space-x-1">
+                                                ${!isOutsource ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full flex items-center"><i class="fa-solid fa-circle-check mr-1 text-[9px]"></i>사내생산 완료</span>' : ''}
+                                                <button onclick="deleteOrder('${order.id}')" class="text-slate-400 hover:text-rose-600 text-xs p-1"><i class="fa-solid fa-trash"></i></button>
+                                            </div>
+                                        </div>
+                                        <h4 class="text-sm font-bold text-slate-800">${order.itemName}</h4>
+                                        <div class="text-xs text-slate-500">납품처: <span class="font-medium text-slate-700">${order.client}</span></div>
+                                        
+                                        <!-- In-house / Outsource indicator badge -->
+                                        <div class="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 text-xs">
+                                            <span class="font-medium text-slate-700">현재 공정 방식:</span>
+                                            ${isOutsource ? `<span class="px-2 py-0.5 font-semibold text-[11px] bg-purple-100 text-purple-800 rounded-md border border-purple-200"><i class="fa-solid fa-handshake-angle mr-1"></i>외주 (${currentStep.outsourceVendor || '업체미지정'})</span>` : `<span class="px-2 py-0.5 font-semibold text-[11px] bg-emerald-100 text-emerald-800 rounded-md border border-emerald-200"><i class="fa-solid fa-house-laptop mr-1"></i>사내 진행 (완료됨)</span>`}
+                                        </div>
+
+                                        <div class="text-[11px] text-slate-400 flex items-center space-x-1 overflow-x-auto py-1">
+                                            <span>경로:</span> ${pathBadges}
+                                        </div>
+
+                                        <div class="text-xs text-slate-500 flex justify-between">
+                                            <span>수량: <b>${order.qty}</b>개</span>
+                                            <span>담당: ${order.manager}</span>
+                                        </div>
+                                        <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                                            <span class="text-slate-400">${order.dueDate}</span>
+                                            <div class="space-x-1">
+                                                ${order.currentStageIndex > 0 ? `<button onclick="moveOrderPathIndex('${order.id}', -1)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded font-medium"><i class="fa-solid fa-arrow-left"></i></button>` : ''}
+                                                ${order.currentStageIndex < order.processSteps.length - 1 ? `<button onclick="moveOrderPathIndex('${order.id}', 1)" class="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium">다음 <i class="fa-solid fa-arrow-right"></i></button>` : `<button onclick="completeOrder('${order.id}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium">완료 처리 <i class="fa-solid fa-check"></i></button>`}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Table render
+            const tableBody = document.getElementById('process-table-body');
+            tableBody.innerHTML = progressOrders.map(order => {
+                const currentStep = order.processSteps[order.currentStageIndex] || order.processSteps[0];
+                const stageObj = MASTER_PROCESSES.find(s => s.id === currentStep.id);
+                const isOutsource = currentStep.type === 'outsource';
+
+                const fullRouteStr = order.processSteps.map(s => {
+                    const mInfo = MASTER_PROCESSES.find(m => m.id === s.id);
+                    const name = mInfo ? mInfo.name : s.id;
+                    return `${name}(${s.type === 'outsource' ? '외주:' + (s.outsourceVendor || '미지정') : '사내완료'})`;
+                }).join(' ➔ ');
+
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3.5 font-medium text-slate-800">${order.id}</td>
+                        <td class="p-3.5 font-semibold text-slate-700">${order.client}</td>
+                        <td class="p-3.5 text-slate-900 font-medium">${order.itemName}</td>
+                        <td class="p-3.5">${order.qty} 개</td>
+                        <td class="p-3.5 text-xs text-slate-600 max-w-xs truncate" title="${fullRouteStr}">${fullRouteStr}</td>
+                        <td class="p-3.5">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-2.5 py-1 text-xs font-medium rounded-full border ${stageObj ? stageObj.color : ''}">${stageObj ? stageObj.name : currentStep.id}</span>
+                                ${isOutsource ? `<span class="px-2 py-0.5 text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 rounded">외주: ${currentStep.outsourceVendor || '미지정'}</span>` : `<span class="px-2.5 py-0.5 text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 rounded flex items-center"><i class="fa-solid fa-circle-check mr-1"></i>사내생산 완료</span>`}
+                            </div>
+                        </td>
+                        <td class="p-3.5 text-right space-x-1">
+                            <select onchange="changeOrderStageIndexDirect('${order.id}', parseInt(this.value))" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                ${order.processSteps.map((step, idx) => {
+                                    const stepInfo = MASTER_PROCESSES.find(m => m.id === step.id);
+                                    return `<option value="${idx}" ${idx === order.currentStageIndex ? 'selected' : ''}>${stepInfo ? stepInfo.name : step.id} [${step.type === 'outsource' ? '외주' : '사내완료'}]</option>`;
+                                }).join('')}
+                            </select>
+                            <button onclick="completeOrder('${order.id}')" class="px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium ml-1" title="완료된 제품 폴더로 이동">완료</button>
+                            <button onclick="deleteOrder('${order.id}')" class="text-slate-400 hover:text-rose-600 px-2 py-1"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function moveOrderPathIndex(orderId, direction) {
+            const order = appData.orders.find(o => o.id === orderId);
+            if (!order) return;
+            const newIndex = order.currentStageIndex + direction;
+            if (newIndex >= 0 && newIndex < order.processSteps.length) {
+                order.currentStageIndex = newIndex;
+                const nextStep = order.processSteps[newIndex];
+                const stepObj = MASTER_PROCESSES.find(m => m.id === nextStep.id);
+                saveAppData();
+                showToast(`[${order.id}] 오더가 [${stepObj ? stepObj.name : nextStep.id}] (${nextStep.type === 'outsource' ? '외주: ' + nextStep.outsourceVendor : '사내'}) 공정으로 이동되었습니다.`, 'success');
+            }
+        }
+
+        function changeOrderStageIndexDirect(orderId, newIndex) {
+            const order = appData.orders.find(o => o.id === orderId);
+            if (order && newIndex >= 0 && newIndex < order.processSteps.length) {
+                order.currentStageIndex = newIndex;
+                const step = order.processSteps[newIndex];
+                const stepObj = MASTER_PROCESSES.find(m => m.id === step.id);
+                saveAppData();
+                showToast(`[${order.id}] 공정이 [${stepObj ? stepObj.name : step.id}] (으)로 변경되었습니다.`, 'success');
+            }
+        }
+
+        function moveOrderFolder(orderId, targetFolder) {
+            const order = appData.orders.find(o => o.id === orderId);
+            if (order) {
+                order.folder = targetFolder;
+                if(targetFolder === 'progress' && order.currentStageIndex >= order.processSteps.length) {
+                    order.currentStageIndex = 0;
+                } else if(targetFolder === 'completed') {
+                    order.currentStageIndex = order.processSteps.length - 1;
+                }
+                saveAppData();
+                let folderName = targetFolder === 'ordered' ? '발주된 제품' : (targetFolder === 'progress' ? '진행중인 제품' : '완료된 제품');
+                showToast(`[${order.id}] 오더가 [${folderName}] 폴더로 이동되었습니다.`, 'success');
+            }
+        }
+
+        function completeOrder(orderId) {
+            const order = appData.orders.find(o => o.id === orderId);
+            if (order) {
+                order.folder = 'completed';
+                order.currentStageIndex = order.processSteps.length - 1;
+                saveAppData();
+                showToast(`[${order.id}] 오더가 최종 완료되어 '완료된 제품' 폴더로 이동되었습니다.`, 'success');
+            }
+        }
+
+        // --- 4. Completed Folder (완료된 제품) ---
+        function renderCompletedFolder() {
+            const tbody = document.getElementById('completed-table-body');
+            const completedOrders = appData.orders.filter(o => o.folder === 'completed');
+            
+            document.getElementById('completed-folder-count').innerText = completedOrders.length;
+
+            if(completedOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">완료된 제품 아카이브가 비어 있습니다.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = completedOrders.map(order => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3.5 font-medium text-slate-800">${order.id}</td>
+                    <td class="p-3.5 font-semibold text-slate-700">${order.client}</td>
+                    <td class="p-3.5 text-slate-900 font-medium">${order.itemName}</td>
+                    <td class="p-3.5">${order.qty} 개</td>
+                    <td class="p-3.5 text-slate-600">${order.manager}</td>
+                    <td class="p-3.5 text-slate-500">${order.dueDate} (완료)</td>
+                    <td class="p-3.5 text-right space-x-2">
+                        <button onclick="moveOrderFolder('${order.id}', 'progress')" class="px-2.5 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition" title="진행 폴더로 복원">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> 진행 복원
+                        </button>
+                        <button onclick="deleteOrder('${order.id}')" class="text-slate-400 hover:text-rose-600 transition p-1" title="삭제"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteOrder(id) {
+            if (confirm('해당 생산 오더를 삭제하시겠습니까?')) {
+                appData.orders = appData.orders.filter(o => o.id !== id);
+                saveAppData();
+                showToast('생산 오더가 삭제되었습니다.', 'info');
+            }
+        }
+
+        // --- 5. Material Renderer ---
+        function renderMaterials() {
+            const tbody = document.getElementById('material-table-body');
+            tbody.innerHTML = appData.materials.map(mat => {
+                const isLow = mat.stock < mat.safety;
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3.5 font-medium text-slate-800">${mat.id}</td>
+                        <td class="p-3.5">${mat.name}</td>
+                        <td class="p-3.5 text-slate-500">${mat.spec}</td>
+                        <td class="p-3.5 font-bold ${isLow ? 'text-rose-600' : 'text-slate-700'}">${mat.stock}</td>
+                        <td class="p-3.5 text-slate-500">${mat.safety}</td>
+                        <td class="p-3.5">
+                            ${isLow ? '<span class="px-2.5 py-1 text-xs font-semibold bg-rose-50 text-rose-700 rounded-full border border-rose-200">재고 부족 (발주요망)</span>' : '<span class="px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">정상</span>'}
+                        </td>
+                        <td class="p-3.5 text-right space-x-2">
+                            <button onclick="restockMaterial('${mat.id}')" class="px-2.5 py-1 text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium rounded-lg transition" title="입고 처리(+50)"><i class="fa-solid fa-plus mr-1"></i>입고</button>
+                            <button onclick="deleteMaterial('${mat.id}')" class="text-slate-400 hover:text-rose-600 transition" title="삭제"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function restockMaterial(id) {
+            const mat = appData.materials.find(m => m.id === id);
+            if (mat) {
+                mat.stock += 50;
+                saveAppData();
+                showToast(`[${mat.name}] 자재가 50개 입고되었습니다.`, 'success');
+            }
+        }
+
+        function deleteMaterial(id) {
+            if (confirm('해당 자재 정보를 삭제하시겠습니까?')) {
+                appData.materials = appData.materials.filter(m => m.id !== id);
+                saveAppData();
+                showToast('자재 정보가 삭제되었습니다.', 'info');
+            }
+        }
+
+        // --- 6. Clients & Hierarchical Sub-Items Management ---
+        function renderClientsHierarchy() {
+            const container = document.getElementById('clients-hierarchy-container');
+            container.innerHTML = appData.clients.map(client => `
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded">${client.id}</span>
+                                <h3 class="text-base font-bold text-slate-900">${client.name}</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">담당자: <span class="font-medium text-slate-700">${client.manager}</span> (${client.phone}) | ${client.address}</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="openDataModal('subitem', '${client.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center space-x-1">
+                                <i class="fa-solid fa-plus text-indigo-600"></i>
+                                <span>세부품목 추가</span>
+                            </button>
+                            <button onclick="openDataModal('client', '${client.id}')" class="text-slate-400 hover:text-blue-600 px-2 py-1 text-xs" title="납품처 정보 수정"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteClient('${client.id}')" class="text-slate-400 hover:text-rose-600 px-2 py-1 text-xs" title="납품처 삭제"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Sub-items List table -->
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center">
+                            <i class="fa-solid fa-boxes-stacked mr-1.5 text-indigo-600"></i> 등록된 세부 품목 (${client.subItems ? client.subItems.length : 0}개)
+                        </h4>
+                        <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                            <table class="w-full text-left text-xs text-slate-600">
+                                <thead class="bg-slate-50 text-slate-700 font-semibold uppercase">
+                                    <tr>
+                                        <th class="p-2.5">품목 코드</th>
+                                        <th class="p-2.5">세부 품목명</th>
+                                        <th class="p-2.5">규격/설명</th>
+                                        <th class="p-2.5 text-right">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 bg-white">
+                                    ${(!client.subItems || client.subItems.length === 0) ? `
+                                        <tr><td colspan="4" class="p-4 text-center text-slate-400">등록된 세부 품목이 없습니다. 우측 상단 버튼을 눌러 추가하세요.</td></tr>
+                                    ` : client.subItems.map(sub => `
+                                        <tr class="hover:bg-slate-50/50 transition">
+                                            <td class="p-2.5 font-medium text-slate-800">${sub.code || '-'}</td>
+                                            <td class="p-2.5 font-bold text-slate-900">${sub.name}</td>
+                                            <td class="p-2.5 text-slate-500">${sub.desc || '-'}</td>
+                                            <td class="p-2.5 text-right space-x-1">
+                                                <button onclick="openDataModal('subitem', '${client.id}', '${sub.id}')" class="text-slate-400 hover:text-blue-600 px-1 py-1" title="세부품목 수정"><i class="fa-solid fa-pen"></i></button>
+                                                <button onclick="deleteSubItem('${client.id}', '${sub.id}')" class="text-slate-400 hover:text-rose-600 px-1 py-1" title="세부품목 삭제"><i class="fa-solid fa-trash-can"></i></button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteClient(id) {
+            if (confirm('해당 납품처와 하위 세부 품목 정보를 모두 삭제하시겠습니까?')) {
+                appData.clients = appData.clients.filter(c => c.id !== id);
+                saveAppData();
+                showToast('납품처 정보가 삭제되었습니다.', 'info');
+            }
+        }
+
+        function deleteSubItem(clientId, subItemId) {
+            if (confirm('해당 세부 품목을 삭제하시겠습니까?')) {
+                const client = appData.clients.find(c => c.id === clientId);
+                if (client && client.subItems) {
+                    client.subItems = client.subItems.filter(s => s.id !== subItemId);
+                    saveAppData();
+                    showToast('세부 품목이 삭제되었습니다.', 'info');
+                }
+            }
+        }
+
+        // --- 7. Shipping Renderer ---
+        function renderShipping() {
+            const tbody = document.getElementById('shipping-table-body');
+            tbody.innerHTML = appData.shipping.map(ship => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3.5 font-medium text-slate-800">${ship.id}</td>
+                    <td class="p-3.5 font-semibold text-slate-700">${ship.destination}</td>
+                    <td class="p-3.5 text-slate-900 font-medium">${ship.itemName}</td>
+                    <td class="p-3.5">${ship.qty} 개</td>
+                    <td class="p-3.5 text-slate-500">${ship.shipDate}</td>
+                    <td class="p-3.5">
+                        <span class="px-2.5 py-1 text-xs font-medium rounded-full ${ship.packStatus === '포장완료' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${ship.packStatus}</span>
+                    </td>
+                    <td class="p-3.5">
+                        <span class="px-2.5 py-1 text-xs font-medium rounded-full ${ship.shipStatus === '출하완료' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}">${ship.shipStatus}</span>
+                    </td>
+                    <td class="p-3.5 text-right space-x-2">
+                        <button onclick="toggleShippingStatus('${ship.id}')" class="px-2.5 py-1 text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium rounded-lg transition">상태토글</button>
+                        <button onclick="deleteShipping('${ship.id}')" class="text-slate-400 hover:text-rose-600 transition"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function toggleShippingStatus(id) {
+            const ship = appData.shipping.find(s => s.id === id);
+            if (ship) {
+                if (ship.shipStatus === '출하대기') {
+                    ship.shipStatus = '출하완료';
+                    ship.packStatus = '포장완료';
+                } else {
+                    ship.shipStatus = '출하대기';
+                }
+                saveAppData();
+                showToast(`[${ship.id}] 출하 상태가 변경되었습니다.`, 'success');
+            }
+        }
+
+        function deleteShipping(id) {
+            if (confirm('출하 정보를 삭제하시겠습니까?')) {
+                appData.shipping = appData.shipping.filter(s => s.id !== id);
+                saveAppData();
+                showToast('출하 정보가 삭제되었습니다.', 'info');
+            }
+        }
+
+        // --- Modal & Form Handling ---
+        function openDataModal(type, param1 = null, param2 = null) {
+            const modal = document.getElementById('data-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalType = document.getElementById('modal-type');
+            const modalExtraId = document.getElementById('modal-extra-id');
+            const modalParam2 = document.getElementById('modal-param2');
+            const formFields = document.getElementById('modal-form-fields');
+            
+            modal.classList.remove('hidden');
+            modalType.value = type;
+            modalExtraId.value = param1 || '';
+            modalParam2.value = param2 || '';
+
+            if (type === 'order') {
+                modalTitle.innerText = '신규 생산 오더 / 발주 등록';
+                const clientOptions = appData.clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                
+                const processConfigRows = MASTER_PROCESSES.map(p => {
+                    const isDefaultSelected = ['stage_material', 'stage_machining', 'stage_inspection', 'stage_shipping_ready'].includes(p.id);
+                    return `
+                        <div class="process-config-row bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <label class="flex items-center space-x-2 cursor-pointer min-w-[130px]">
+                                <input type="checkbox" name="order_process_id" value="${p.id}" ${isDefaultSelected ? 'checked' : ''} class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                                <span class="text-xs font-bold text-slate-800 flex items-center"><i class="fa-solid ${p.icon} mr-1.5 text-indigo-600"></i> ${p.name}</span>
+                            </label>
+                            
+                            <div class="flex items-center space-x-2 w-full sm:w-auto">
+                                <select name="order_process_type_${p.id}" class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="toggleVendorInput(this, '${p.id}')">
+                                    <option value="inhouse">사내 진행</option>
+                                    <option value="outsource">외주 공정</option>
+                                </select>
+                                <input type="text" name="order_vendor_${p.id}" id="vendor_input_${p.id}" placeholder="외주 업체명 입력" disabled class="text-xs bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 w-40 opacity-50 focus:outline-none">
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                formFields.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">오더 번호</label>
+                        <input type="text" id="f-order-id" required value="ORD-2026-${String(Math.floor(Math.random() * 900) + 100)}" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">등록 폴더 선택</label>
+                        <select id="f-order-folder" required class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="ordered">발주된 제품 (대기)</option>
+                            <option value="progress" selected>진행중인 제품</option>
+                            <option value="completed">완료된 제품</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">납품처 선택</label>
+                        <select id="f-order-client" onchange="updateSubItemOptionsForOrder()" required class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">납품처를 선택하세요</option>
+                            ${clientOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">세부 품목 선택</label>
+                        <select id="f-order-subitem" required class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">먼저 납품처를 선택하세요</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">수량</label>
+                            <input type="number" id="f-order-qty" required min="1" value="30" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">담당자</label>
+                            <input type="text" id="f-order-manager" required value="홍길동" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">납기일자</label>
+                        <input type="date" id="f-order-duedate" required value="2026-11-15" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-2">공정 경로 및 사내 / 외주(업체명) 상세 설정</label>
+                        <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                            ${processConfigRows}
+                        </div>
+                    </div>
+                `;
+                if(appData.clients.length > 0) {
+                    document.getElementById('f-order-client').value = appData.clients[0].name;
+                    updateSubItemOptionsForOrder();
+                }
+            } else if (type === 'subitem') {
+                const clientId = param1;
+                const subId = param2;
+                const client = appData.clients.find(c => c.id === clientId);
+                let subItem = null;
+                if (subId && client) {
+                    subItem = client.subItems.find(s => s.id === subId);
+                }
+
+                modalTitle.innerText = subItem ? `[${client ? client.name : ''}] 세부 품목 수정` : `[${client ? client.name : ''}] 세부 품목 추가`;
+                
+                const defaultCode = subItem ? subItem.code : `SUB-${Math.floor(Math.random() * 900) + 100}`;
+                const defaultName = subItem ? subItem.name : '';
+                const defaultDesc = subItem ? subItem.desc : '';
+
+                formFields.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">세부 품목 코드</label>
+                        <input type="text" id="f-sub-code" required value="${defaultCode}" ${subItem ? 'readonly class="w-full text-sm bg-slate-200 border border-slate-300 text-slate-500 rounded-xl px-3.5 py-2.5 focus:outline-none"' : 'class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"'}>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">세부 품목명</label>
+                        <input type="text" id="f-sub-name" required value="${defaultName}" placeholder="예: 고정밀 엑추에이터" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">규격 및 설명</label>
+                        <input type="text" id="f-sub-desc" required value="${defaultDesc}" placeholder="예: DC 12V 컴팩트형" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                `;
+            } else if (type === 'material') {
+                modalTitle.innerText = '신규 자재 및 발주 등록';
+                formFields.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">자재 코드</label>
+                        <input type="text" id="f-mat-id" required value="M-0${Math.floor(Math.random() * 90) + 10}" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">자재명</label>
+                        <input type="text" id="f-mat-name" required placeholder="예: 베어링 세트" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">규격</label>
+                        <input type="text" id="f-mat-spec" required placeholder="예: 6204ZZ" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">초기 입고수량</label>
+                            <input type="number" id="f-mat-stock" required min="0" value="100" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">안전 재고 기준</label>
+                            <input type="number" id="f-mat-safety" required min="0" value="30" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'client') {
+                const existingClient = extraId ? appData.clients.find(c => c.id === extraId) : null;
+                modalTitle.innerText = existingClient ? '납품처 정보 수정' : '신규 납품처 등록';
+                const defaultId = existingClient ? existingClient.id : `CL-0${Math.floor(Math.random() * 90) + 10}`;
+                const defaultName = existingClient ? existingClient.name : '';
+                const defaultManager = existingClient ? existingClient.manager : '';
+                const defaultPhone = existingClient ? existingClient.phone : '';
+                const defaultAddress = existingClient ? existingClient.address : '';
+
+                formFields.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">납품처 코드</label>
+                        <input type="text" id="f-client-id" required value="${defaultId}" ${existingClient ? 'readonly class="w-full text-sm bg-slate-200 border border-slate-300 text-slate-500 rounded-xl px-3.5 py-2.5 focus:outline-none"' : 'class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"'}>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">납품처 / 기업명</label>
+                        <input type="text" id="f-client-name" required value="${defaultName}" placeholder="예: (주)미래인더스트리" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">담당자 성명</label>
+                            <input type="text" id="f-client-manager" required value="${defaultManager}" placeholder="예: 김민수 과장" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">연락처</label>
+                            <input type="text" id="f-client-phone" required value="${defaultPhone}" placeholder="예: 02-555-9988" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">주소 / 위치</label>
+                        <input type="text" id="f-client-address" required value="${defaultAddress}" placeholder="예: 서울특별시 강남구 테헤란로 123" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                `;
+            } else if (type === 'shipping') {
+                modalTitle.innerText = '신규 출하 오더 등록';
+                const clientOptions = appData.clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                formFields.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">출하 번호</label>
+                        <input type="text" id="f-ship-id" required value="SHIP-${Math.floor(Math.random() * 900) + 100}" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">납품처 / 고객사 선택</label>
+                        <select id="f-ship-dest" onchange="updateSubItemOptionsForShipping()" required class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">납품처를 선택하세요</option>
+                            ${clientOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">세부 품목 선택</label>
+                        <select id="f-ship-item" required class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">먼저 납품처를 선택하세요</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">수량</label>
+                            <input type="number" id="f-ship-qty" required min="1" value="20" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">출하 예정일</label>
+                            <input type="date" id="f-ship-date" required value="2026-10-25" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                `;
+                if(appData.clients.length > 0) {
+                    document.getElementById('f-ship-dest').value = appData.clients[0].name;
+                    updateSubItemOptionsForShipping();
+                }
+            }
+        }
+
+        function toggleVendorInput(selectElem, processId) {
+            const vendorInput = document.getElementById(`vendor_input_${processId}`);
+            if (selectElem.value === 'outsource') {
+                vendorInput.disabled = false;
+                vendorInput.classList.remove('bg-slate-100', 'opacity-50');
+                vendorInput.classList.add('bg-white');
+                vendorInput.required = true;
+            } else {
+                vendorInput.disabled = true;
+                vendorInput.value = '';
+                vendorInput.classList.add('bg-slate-100', 'opacity-50');
+                vendorInput.classList.remove('bg-white');
+                vendorInput.required = false;
+            }
+        }
+
+        function updateSubItemOptionsForOrder() {
+            const clientName = document.getElementById('f-order-client').value;
+            const subItemSelect = document.getElementById('f-order-subitem');
+            const client = appData.clients.find(c => c.name === clientName);
+            
+            if (client && client.subItems && client.subItems.length > 0) {
+                subItemSelect.innerHTML = client.subItems.map(s => `<option value="${s.name}">${s.name} (${s.code})</option>`).join('');
+            } else {
+                subItemSelect.innerHTML = `<option value="">등록된 세부 품목이 없습니다</option>`;
+            }
+        }
+
+        function updateSubItemOptionsForShipping() {
+            const clientName = document.getElementById('f-ship-dest').value;
+            const subItemSelect = document.getElementById('f-ship-item');
+            const client = appData.clients.find(c => c.name === clientName);
+            
+            if (client && client.subItems && client.subItems.length > 0) {
+                subItemSelect.innerHTML = client.subItems.map(s => `<option value="${s.name}">${s.name} (${s.code})</option>`).join('');
+            } else {
+                subItemSelect.innerHTML = `<option value="">등록된 세부 품목이 없습니다</option>`;
+            }
+        }
+
+        function closeDataModal() {
+            document.getElementById('data-modal').classList.add('hidden');
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const type = document.getElementById('modal-type').value;
+            const extraId = document.getElementById('modal-extra-id').value;
+            const param2 = document.getElementById('modal-param2').value;
+
+            if (type === 'order') {
+                const id = document.getElementById('f-order-id').value;
+                const folder = document.getElementById('f-order-folder').value;
+                const client = document.getElementById('f-order-client').value;
+                const itemName = document.getElementById('f-order-subitem').value;
+                const qty = parseInt(document.getElementById('f-order-qty').value);
+                const manager = document.getElementById('f-order-manager').value;
+                const dueDate = document.getElementById('f-order-duedate').value;
+
+                const checkedProcessBoxes = document.querySelectorAll('input[name="order_process_id"]:checked');
+                const processSteps = Array.from(checkedProcessBoxes).map(cb => {
+                    const pId = cb.value;
+                    const typeSelect = document.querySelector(`select[name="order_process_type_${pId}"]`);
+                    const vendorInput = document.querySelector(`input[name="order_vendor_${pId}"]`);
+                    return {
+                        id: pId,
+                        type: typeSelect ? typeSelect.value : 'inhouse',
+                        outsourceVendor: typeSelect && typeSelect.value === 'outsource' ? (vendorInput ? vendorInput.value : '') : ''
+                    };
+                });
+
+                if(!itemName) {
+                    showToast('세부 품목을 선택해주세요.', 'info');
+                    return;
+                }
+                if(processSteps.length === 0) {
+                    showToast('최소 하나 이상의 공정 단계를 선택해야 합니다.', 'info');
+                    return;
+                }
+
+                let initialStageIndex = 0;
+                if(folder === 'completed') initialStageIndex = processSteps.length - 1;
+
+                appData.orders.unshift({ id, folder, client, itemName, qty, processSteps, currentStageIndex: initialStageIndex, manager, dueDate });
+                showToast('신규 생산 오더가 등록되었습니다.', 'success');
+            } else if (type === 'subitem') {
+                const clientId = extraId;
+                const subItemId = param2;
+                const subCode = document.getElementById('f-sub-code').value;
+                const name = document.getElementById('f-sub-name').value;
+                const desc = document.getElementById('f-sub-desc').value;
+
+                const client = appData.clients.find(c => c.id === clientId);
+                if (client) {
+                    if (!client.subItems) client.subItems = [];
+                    
+                    if (subItemId) {
+                        const subItem = client.subItems.find(s => s.id === subItemId);
+                        if (subItem) {
+                            subItem.name = name;
+                            subItem.desc = desc;
+                            showToast('세부 품목 정보가 수정되었습니다.', 'success');
+                        }
+                    } else {
+                        client.subItems.push({ id: 'SUB-' + Math.floor(Math.random() * 9000 + 1000), code: subCode, name, desc });
+                        showToast('신규 세부 품목이 등록되었습니다.', 'success');
+                    }
+                }
+            } else if (type === 'material') {
+                const id = document.getElementById('f-mat-id').value;
+                const name = document.getElementById('f-mat-name').value;
+                const spec = document.getElementById('f-mat-spec').value;
+                const stock = parseInt(document.getElementById('f-mat-stock').value);
+                const safety = parseInt(document.getElementById('f-mat-safety').value);
+
+                appData.materials.unshift({ id, name, spec, stock, safety });
+                showToast('신규 자재가 등록되었습니다.', 'success');
+            } else if (type === 'client') {
+                const id = document.getElementById('f-client-id').value;
+                const name = document.getElementById('f-client-name').value;
+                const manager = document.getElementById('f-client-manager').value;
+                const phone = document.getElementById('f-client-phone').value;
+                const address = document.getElementById('f-client-address').value;
+
+                if (extraId) {
+                    const client = appData.clients.find(c => c.id === extraId);
+                    if (client) {
+                        client.name = name;
+                        client.manager = manager;
+                        client.phone = phone;
+                        client.address = address;
+                        showToast('납품처 정보가 수정되었습니다.', 'success');
+                    }
+                } else {
+                    appData.clients.unshift({ id, name, manager, phone, address, subItems: [] });
+                    showToast('신규 납품처가 등록되었습니다.', 'success');
+                }
+            } else if (type === 'shipping') {
+                const id = document.getElementById('f-ship-id').value;
+                const destination = document.getElementById('f-ship-dest').value;
+                const itemName = document.getElementById('f-ship-item').value;
+                const qty = parseInt(document.getElementById('f-ship-qty').value);
+                const shipDate = document.getElementById('f-ship-date').value;
+
+                if(!itemName) {
+                    showToast('세부 품목을 선택해주세요.', 'info');
+                    return;
+                }
+
+                appData.shipping.unshift({ id, destination, itemName, qty, shipDate, packStatus: '포장대기', shipStatus: '준비중' });
+                showToast('신규 출하 오더가 등록되었습니다.', 'success');
+            }
+
+            saveAppData();
+            closeDataModal();
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-slate-900 text-white' : 'bg-slate-800 text-slate-100';
+            const icon = type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-info text-blue-400';
+
+            toast.className = `${bgColor} px-4 py-3 rounded-xl shadow-lg border border-slate-700 flex items-center space-x-3 text-sm font-medium transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Initialize application on window load
+        window.onload = function() {
+            renderCurrentTab();
+        };
+    </script>
+</body>
+</html>
