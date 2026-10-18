@@ -1,683 +1,340 @@
 <!DOCTYPE html>
-<html lang="ko" class="h-full">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">`
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>제조업 생산 관리 프로그램</title>
-    <!-- Tailwind CSS -->
+    <title>Smart Factory Pro - 생산 관리 시스템</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for Icons -->
+    <!-- FontAwesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDK (실시간 데이터베이스용) -->
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-</head>
-<body class="bg-slate-50 text-slate-800 h-full flex flex-col font-sans antialiased overflow-x-hidden">
-
-    <!-- Top Navigation Bar -->
-    <header class="bg-slate-900 text-white shadow-md z-30 sticky top-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/30">
-                    <i class="fa-solid fa-industry text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold tracking-tight">SmartFactory Pro</h1>
-                    <p class="text-xs text-slate-400">제조업 통합 생산 및 사내/외주 공정 관리 시스템</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-4">
-                <!-- 클라우드 연동 상태 인디케이터 -->
-                <div id="sync-status" class="hidden items-center space-x-1.5 text-xs font-medium text-emerald-400 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                    <i class="fa-solid fa-cloud-bolt"></i>
-                    <span>실시간 연동됨</span>
-                </div>
-                
-                <div id="system-time" class="hidden md:block text-xs font-medium text-slate-300 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                    <!-- Dynamic Time -->
-                </div>
-                <button onclick="openDataModal('order')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>신규 생산/발주 등록</span>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <div class="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
-        
-        <!-- Sidebar Navigation -->
-        <aside class="w-full md:w-64 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 flex flex-col justify-between shrink-0">
-            <nav class="space-y-1.5">
-                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-indigo-50 text-indigo-600">
-                    <i class="fa-solid fa-chart-pie w-5 text-center"></i>
-                    <span>대시보드 요약</span>
-                </button>
-                <button onclick="switchTab('ordered')" id="nav-ordered" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
-                    <i class="fa-solid fa-folder-open w-5 text-center text-amber-500"></i>
-                    <span>발주된 제품 (대기)</span>
-                </button>
-                <button onclick="switchTab('process')" id="nav-process" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
-                    <i class="fa-solid fa-folder-tree w-5 text-center text-blue-500"></i>
-                    <span>진행중인 제품</span>
-                </button>
-                <button onclick="switchTab('completed')" id="nav-completed" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
-                    <i class="fa-solid fa-folder-closed w-5 text-center text-emerald-500"></i>
-                    <span>완료된 제품 (아카이브)</span>
-                </button>
-                <button onclick="switchTab('material')" id="nav-material" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
-                    <i class="fa-solid fa-boxes-stacked w-5 text-center"></i>
-                    <span>자재 입고 및 발주</span>
-                </button>
-                <button onclick="switchTab('clients')" id="nav-clients" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
-                    <i class="fa-solid fa-building-user w-5 text-center"></i>
-                    <span>납품처 및 세부품목 관리</span>
-                </button>
-                <button onclick="switchTab('shipping')" id="nav-shipping" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
-                    <i class="fa-solid fa-truck-fast w-5 text-center"></i>
-                    <span>포장 및 출하 관리</span>
-                </button>
-            </nav>
-
-            <div class="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-400 space-y-2">
-                <div class="flex justify-between items-center">
-                    <span>시스템 상태</span>
-                    <span class="flex items-center text-emerald-600 font-medium">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span> 정상 작동
-                    </span>
-                </div>
-                <div class="text-[11px] text-slate-400">폴더별(발주/진행/완료) 제품 분리 관리 지원</div>
-            </div>
-        </aside>
-
-        <!-- Main Content Area -->
-        <main class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 overflow-hidden flex flex-col">
-            
-            <!-- Tab 1: Dashboard -->
-            <section id="tab-dashboard" class="tab-content flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800">생산 종합 대시보드</h2>
-                        <p class="text-sm text-slate-500">실시간 생산 현황 및 폴더별(발주/진행/완료) 제품 분포를 확인합니다.</p>
-                    </div>
-                    <button onclick="loadInitialData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 transition">
-                        <i class="fa-solid fa-rotate-right mr-1"></i> 샘플 데이터 초기화
-                    </button>
-                </div>
-
-                <!-- KPI Cards Grid -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-amber-50/60 border border-amber-100 p-5 rounded-2xl flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-amber-600 uppercase tracking-wider">발주된 제품 (대기)</p>
-                            <h3 id="kpi-ordered-count" class="text-2xl font-bold text-amber-900 mt-1">0</h3>
-                        </div>
-                        <div class="bg-amber-500 text-white p-3 rounded-xl shadow-sm">
-                            <i class="fa-solid fa-folder-open text-lg"></i>
-                        </div>
-                    </div>
-                    <div class="bg-blue-50/60 border border-blue-100 p-5 rounded-2xl flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-blue-600 uppercase tracking-wider">진행중인 제품</p>
-                            <h3 id="kpi-progress-count" class="text-2xl font-bold text-blue-900 mt-1">0</h3>
-                        </div>
-                        <div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">
-                            <i class="fa-solid fa-folder-tree text-lg"></i>
-                        </div>
-                    </div>
-                    <div class="bg-emerald-50/60 border border-emerald-100 p-5 rounded-2xl flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-emerald-600 uppercase tracking-wider">완료된 제품</p>
-                            <h3 id="kpi-completed-count" class="text-2xl font-bold text-emerald-900 mt-1">0</h3>
-                        </div>
-                        <div class="bg-emerald-600 text-white p-3 rounded-xl shadow-sm">
-                            <i class="fa-solid fa-folder-closed text-lg"></i>
-                        </div>
-                    </div>
-                    <div class="bg-purple-50/60 border border-purple-100 p-5 rounded-2xl flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-purple-600 uppercase tracking-wider">총 등록 오더</p>
-                            <h3 id="kpi-total-orders" class="text-2xl font-bold text-purple-900 mt-1">0</h3>
-                        </div>
-                        <div class="bg-purple-600 text-white p-3 rounded-xl shadow-sm">
-                            <i class="fa-solid fa-clipboard-list text-lg"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Production List Table -->
-                <div class="space-y-3">
-                    <h3 class="text-sm font-bold text-slate-800 flex items-center">
-                        <i class="fa-solid fa-clock-rotate-left mr-2 text-indigo-600"></i> 최근 생산 오더 폴더별 요약
-                    </h3>
-                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                        <table class="w-full text-left text-sm text-slate-600">
-                            <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
-                                <tr>
-                                    <th class="p-3">오더 번호</th>
-                                    <th class="p-3">납품처</th>
-                                    <th class="p-3">세부품목명</th>
-                                    <th class="p-3">수량</th>
-                                    <th class="p-3">현재 폴더 상태</th>
-                                    <th class="p-3">납기일자</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dashboard-recent-table" class="divide-y divide-slate-200 bg-white">
-                                <!-- Populated via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Tab 2: Ordered / Pending Folder (발주된 제품) -->
-            <section id="tab-ordered" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800 flex items-center">
-                            <i class="fa-solid fa-folder-open mr-2 text-amber-500"></i> 발주된 제품 폴더 (대기 중)
-                        </h2>
-                        <p class="text-sm text-slate-500">신규 발주되어 생산 개시를 대기 중인 오더 목록입니다. '생산 시작' 시 진행중인 제품 폴더로 이동합니다.</p>
-                    </div>
-                    <button onclick="openDataModal('order')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>신규 생산/발주 등록</span>
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
-                    <table class="w-full text-left text-sm text-slate-600">
-                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
-                            <tr>
-                                <th class="p-3.5">오더 번호</th>
-                                <th class="p-3.5">납품처</th>
-                                <th class="p-3.5">세부 품목명</th>
-                                <th class="p-3.5">수량</th>
-                                <th class="p-3.5">담당자</th>
-                                <th class="p-3.5">납기일자</th>
-                                <th class="p-3.5 text-right">폴더 이동 / 관리</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ordered-table-body" class="divide-y divide-slate-200 bg-white">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Tab 3: In Progress Folder & Process Monitoring (진행중인 제품) -->
-            <section id="tab-process" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-hidden">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800 flex items-center">
-                            <i class="fa-solid fa-folder-tree mr-2 text-blue-500"></i> 진행중인 제품 폴더 및 공정 모니터링
-                        </h2>
-                        <p class="text-sm text-slate-500">사내 및 외주 공정을 거치고 있는 오더의 단계별 현황입니다. 최종 공정 완료 시 완료된 제품 폴더로 자동 이동됩니다.</p>
-                    </div>
-                    <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                        <button onclick="setProcessView('kanban')" id="view-btn-kanban" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-600 shadow-sm transition">
-                            <i class="fa-solid fa-columns mr-1"></i> 칸반 보드
-                        </button>
-                        <button onclick="setProcessView('table')" id="view-btn-table" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 transition">
-                            <i class="fa-solid fa-table-list mr-1"></i> 테이블 형태
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Kanban Board View -->
-                <div id="process-kanban-view" class="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 pb-4">
-                    <!-- Populated dynamically via JS -->
-                </div>
-
-                <!-- Table View (Hidden by default) -->
-                <div id="process-table-view" class="hidden flex-1 overflow-y-auto border border-slate-200 rounded-xl pr-1">
-                    <table class="w-full text-left text-sm text-slate-600">
-                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase sticky top-0">
-                            <tr>
-                                <th class="p-3.5">오더번호</th>
-                                <th class="p-3.5">납품처</th>
-                                <th class="p-3.5">세부 품목명</th>
-                                <th class="p-3.5">수량</th>
-                                <th class="p-3.5">전체 공정 경로 (사내/외주)</th>
-                                <th class="p-3.5">현재 공정 단계</th>
-                                <th class="p-3.5 text-right">상태 변경</th>
-                            </tr>
-                        </thead>
-                        <tbody id="process-table-body" class="divide-y divide-slate-200 bg-white">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Tab 4: Completed Folder / Archive (완료된 제품) -->
-            <section id="tab-completed" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800 flex items-center">
-                            <i class="fa-solid fa-folder-closed mr-2 text-emerald-500"></i> 완료된 제품 폴더 (아카이브)
-                        </h2>
-                        <p class="text-sm text-slate-500">모든 제조 공정 및 품질 검사가 완료되어 출하를 대기하거나 완료된 제품 아카이브입니다.</p>
-                    </div>
-                    <div class="text-xs text-slate-500 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 font-medium">
-                        총 완료된 제품: <span id="completed-folder-count">0</span>건
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
-                    <table class="w-full text-left text-sm text-slate-600">
-                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
-                            <tr>
-                                <th class="p-3.5">오더 번호</th>
-                                <th class="p-3.5">납품처</th>
-                                <th class="p-3.5">세부 품목명</th>
-                                <th class="p-3.5">수량</th>
-                                <th class="p-3.5">담당자</th>
-                                <th class="p-3.5">완료일자 / 납기</th>
-                                <th class="p-3.5 text-right">폴더 복원 / 관리</th>
-                            </tr>
-                        </thead>
-                        <tbody id="completed-table-body" class="divide-y divide-slate-200 bg-white">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Tab 5: Material & Order Management -->
-            <section id="tab-material" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800">자재 입고 및 발주 관리</h2>
-                        <p class="text-sm text-slate-500">원자재 재고 현황을 모니터링하고 신규 발주 및 입고를 처리합니다.</p>
-                    </div>
-                    <button onclick="openDataModal('material')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>자재 발주 등록</span>
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
-                    <table class="w-full text-left text-sm text-slate-600">
-                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
-                            <tr>
-                                <th class="p-3.5">자재 코드</th>
-                                <th class="p-3.5">자재명</th>
-                                <th class="p-3.5">규격</th>
-                                <th class="p-3.5">현재 재고</th>
-                                <th class="p-3.5">안전 재고</th>
-                                <th class="p-3.5">상태</th>
-                                <th class="p-3.5 text-right">관리</th>
-                            </tr>
-                        </thead>
-                        <tbody id="material-table-body" class="divide-y divide-slate-200 bg-white">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Tab 6: Clients & Sub-Items Management -->
-            <section id="tab-clients" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800">납품처 관리 (추가/삭제/수정) 및 세부 품목</h2>
-                        <p class="text-sm text-slate-500">납품처를 자유롭게 추가, 수정, 삭제할 수 있으며 발주 및 오더 등록 시 자동 연동됩니다.</p>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button onclick="openDataModal('client')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>신규 납품처 등록</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div id="clients-hierarchy-container" class="space-y-4 flex-1">
-                    <!-- Populated via JS -->
-                </div>
-            </section>
-
-            <!-- Tab 7: Packaging & Shipping -->
-            <section id="tab-shipping" class="tab-content hidden flex-1 flex flex-col space-y-6 overflow-y-auto pr-1">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800">포장 및 출하 관리</h2>
-                        <p class="text-sm text-slate-500">공정이 완료된 품목의 포장 상태 및 출하 일정을 관리합니다.</p>
-                    </div>
-                    <button onclick="openDataModal('shipping')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-2">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>출하 오더 추가</span>
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
-                    <table class="w-full text-left text-sm text-slate-600">
-                        <thead class="bg-slate-100 text-slate-700 font-semibold text-xs uppercase">
-                            <tr>
-                                <th class="p-3.5">출하 번호</th>
-                                <th class="p-3.5">납품처</th>
-                                <th class="p-3.5">세부 품목명</th>
-                                <th class="p-3.5">수량</th>
-                                <th class="p-3.5">출하 예정일</th>
-                                <th class="p-3.5">포장상태</th>
-                                <th class="p-3.5">출하상태</th>
-                                <th class="p-3.5 text-right">관리</th>
-                            </tr>
-                        </thead>
-                        <tbody id="shipping-table-body" class="divide-y divide-slate-200 bg-white">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-        </main>
-    </div>
-
-    <!-- Generic Modal Dialog for Add/Edit -->
-    <div id="data-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-slate-200 overflow-hidden transform transition-all max-h-[90vh] flex flex-col">
-            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
-                <h3 id="modal-title" class="text-base font-bold">데이터 등록 / 수정</h3>
-                <button onclick="closeDataModal()" class="text-slate-400 hover:text-white transition">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <form id="generic-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 overflow-y-auto flex-1">
-                <input type="hidden" id="modal-type" value="">
-                <input type="hidden" id="modal-extra-id" value="">
-                <input type="hidden" id="modal-param2" value="">
-                <div id="modal-form-fields" class="space-y-4">
-                    <!-- Populated dynamically via JS -->
-                </div>
-                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 shrink-0">
-                    <button type="button" onclick="closeDataModal()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">취소</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-500 transition shadow-sm">저장하기</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Custom Toast Message Box -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
-
-    <!-- Application Script -->
-    <script>
-        // 파이어베이스(클라우드 실시간 데이터베이스) 설정 및 초기화
+        // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyBNQ61k1VHAlun_MXjIIGxlMBiZ9y-s-Sk",
+            apiKey: "AIzaSyBNQ61kVHAlun_MXJllGxIMBiZ9y-s-Sk",
             authDomain: "smart-factory-d9494.firebaseapp.com",
             projectId: "smart-factory-d9494",
             storageBucket: "smart-factory-d9494.firebasestorage.app",
             messagingSenderId: "750392341104",
             appId: "1:750392341104:web:06da1f06cf52ada2807ab5"
         };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
 
-        // Master Catalog of All Available Process Steps
-        const MASTER_PROCESSES = [
-            { id: 'stage_material', name: '자재준비', icon: 'fa-boxes-packing', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-            { id: 'stage_machining', name: '가공', icon: 'fa-hammer', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-            { id: 'stage_laser', name: '레이저컷팅', icon: 'fa-bolt', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-            { id: 'stage_wire', name: '와이어컷팅', icon: 'fa-wave-square', color: 'bg-teal-50 text-teal-700 border-teal-200' },
-            { id: 'stage_welding', name: '용접', icon: 'fa-fire-flame-curved', color: 'bg-orange-50 text-orange-700 border-orange-200' },
-            { id: 'stage_edm', name: '방전가공', icon: 'fa-bolt-lightning', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-            { id: 'stage_plating', name: '도금', icon: 'fa-gem', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-            { id: 'stage_painting', name: '도장', icon: 'fa-brush', color: 'bg-pink-50 text-pink-700 border-pink-200' },
-            { id: 'stage_engraving', name: '각인', icon: 'fa-signature', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-            { id: 'stage_assembly', name: '정밀 조립', icon: 'fa-screwdriver-wrench', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-            { id: 'stage_inspection', name: '품질 검사', icon: 'fa-clipboard-check', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-            { id: 'stage_shipping_ready', name: '출하 대기', icon: 'fa-truck', color: 'bg-sky-50 text-sky-700 border-sky-200' }
-        ];
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        // Default Sample Data (최초 접속 시 생성됨)
-        const defaultState = {
-            clients: [
-                { 
-                    id: 'CL-001', 
-                    name: '(주)한국기계 오창공장', 
-                    manager: '김동현 부장', 
-                    phone: '043-555-1234', 
-                    address: '충청북도 청주시 청원구 오창읍 산업단로 45',
-                    subItems: [
-                        { id: 'SUB-101', name: '산업용 자동화 컨트롤러 A타입', code: 'CTRL-A01', desc: '표준형 24채널 제어반' }
-                    ]
+        // Expose Firebase tools to global scope for the app logic
+        window.db = db;
+        window.firebaseModules = { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot };
+        window.isFirebaseConnected = true;
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+    <!-- Top Navigation & Status -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 p-2 rounded-xl text-white">
+                <i class="fa-solid fa-industry text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-wide">Smart Factory Pro</h1>
+                <p class="text-xs text-slate-400">생산 공정 및 재고 통합 관리 시스템</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div id="sync-status" class="flex items-center space-x-2 bg-emerald-950/60 border border-emerald-600/50 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>실시간 연동됨</span>
+            </div>
+            <div class="text-xs text-slate-400">
+                <i class="fa-regular fa-clock mr-1"></i><span id="current-time"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+        <!-- Dashboard Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">총 오더 건수</p>
+                    <h3 id="stat-total" class="text-2xl font-bold mt-1 text-white">0건</h3>
+                </div>
+                <div class="bg-blue-500/10 text-blue-400 p-3 rounded-xl">
+                    <i class="fa-solid fa-clipboard-list text-lg"></i>
+                </div>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">진행 중 공정</p>
+                    <h3 id="stat-progress" class="text-2xl font-bold mt-1 text-amber-400">0건</h3>
+                </div>
+                <div class="bg-amber-500/10 text-amber-400 p-3 rounded-xl">
+                    <i class="fa-solid fa-gears text-lg"></i>
+                </div>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">완료된 생산</p>
+                    <h3 id="stat-completed" class="text-2xl font-bold mt-1 text-emerald-400">0건</h3>
+                </div>
+                <div class="bg-emerald-500/10 text-emerald-400 p-3 rounded-xl">
+                    <i class="fa-solid fa-circle-check text-lg"></i>
+                </div>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">시스템 상태</p>
+                    <h3 class="text-lg font-bold mt-1 text-emerald-400 flex items-center"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Cloud Sync</h3>
+                </div>
+                <div class="bg-purple-500/10 text-purple-400 p-3 rounded-xl">
+                    <i class="fa-solid fa-database text-lg"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Bar & Order Registration -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-80">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+                    <input type="text" id="search-input" placeholder="오더명, 품번 또는 거래처 검색..." class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <button onclick="openOrderModal()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-plus"></i>
+                <span>신규 생산 오더 등록</span>
+            </button>
+        </div>
+
+        <!-- Orders Table Section -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
+            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                <h2 class="font-bold text-base text-white">실시간 생산 공정 현황</h2>
+                <span class="text-xs text-slate-400">* Firebase Firestore 실시간 동기화 적용됨</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-900/60 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                            <th class="py-3 px-6">오더 번호 / 품명</th>
+                            <th class="py-3 px-6">거래처</th>
+                            <th class="py-3 px-6">수량</th>
+                            <th class="py-3 px-6">현재 공정 단계</th>
+                            <th class="py-3 px-6">등록일시</th>
+                            <th class="py-3 px-6 text-center">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="order-table-body" class="divide-y divide-slate-700/60 text-sm">
+                        <tr>
+                            <td colspan="6" class="text-center py-12 text-slate-400">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-blue-500 block"></i>
+                                데이터 불러오는 중...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Order Modal -->
+    <div id="order-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/40">
+                <h3 class="font-bold text-white text-base">신규 생산 오더 등록</h3>
+                <button onclick="closeOrderModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="order-form" onsubmit="handleOrderSubmit(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1.5">품명 / 오더명</label>
+                    <input type="text" id="modal-product" required placeholder="예: 알루미늄 베드 가공품" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1.5">거래처</label>
+                    <input type="text" id="modal-client" required placeholder="예: OO정밀" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1.5">생산 수량</label>
+                    <input type="number" id="modal-quantity" required min="1" value="100" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1.5">초기 공정 단계</label>
+                    <select id="modal-stage" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                        <option value="자재 발주">1단계: 자재 발주</option>
+                        <option value="가공 준비">2단계: 가공 준비</option>
+                        <option value="정밀 가공">3단계: 정밀 가공</option>
+                        <option value="품질 검사">4단계: 품질 검사</option>
+                        <option value="포장 및 출하">5단계: 포장 및 출하</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-700">
+                    <button type="button" onclick="closeOrderModal()" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200">취소</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20">등록하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- Application Core Script -->
+    <script>
+        let ordersData = [];
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').innerText = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Real-time Firestore Listener
+        window.addEventListener('load', () => {
+            const checkFirebaseInterval = setInterval(() => {
+                if (window.db && window.firebaseModules) {
+                    clearInterval(checkFirebaseInterval);
+                    initFirestoreListener();
                 }
-            ],
-            materials: [
-                { id: 'M-001', name: '알루미늄 프로파일', spec: '40x40 표준형', stock: 120, safety: 50 }
-            ],
-            orders: [],
-            shipping: []
-        };
-
-        let appData = defaultState;
-        let isDbConnected = false;
-
-        // 클라우드 실시간 동기화 리스너 (새로고침 없이 자동 반영)
-        db.collection("smart_factory").doc("main_data").onSnapshot((doc) => {
-            if (doc.exists) {
-                appData = doc.data();
-                renderCurrentTab();
-                
-                // 최초 연결 시 UI 표시
-                if (!isDbConnected) {
-                    document.getElementById('sync-status').classList.remove('hidden');
-                    document.getElementById('sync-status').classList.add('flex');
-                    showToast('클라우드 서버와 실시간 연동되었습니다.', 'success');
-                    isDbConnected = true;
-                }
-            } else {
-                // 데이터베이스에 내용이 아예 없는 경우 초기 세팅값 밀어넣기
-                db.collection("smart_factory").doc("main_data").set(defaultState);
-            }
-        }, (error) => {
-            console.error("Firebase connection error:", error);
-            showToast("데이터베이스 연결에 실패했습니다.", "error");
+            }, 200);
         });
 
-        // 데이터 저장 함수 (클라우드로 전송)
-        function saveAppData() {
-            if (isDbConnected) {
-                db.collection("smart_factory").doc("main_data").set(appData).catch(err => {
-                    console.error("Data save error:", err);
-                    showToast("저장 중 오류가 발생했습니다.", "error");
+        function initFirestoreListener() {
+            const { collection, onSnapshot } = window.firebaseModules;
+            onSnapshot(collection(window.db, "orders"), (snapshot) => {
+                ordersData = [];
+                snapshot.forEach((doc) => {
+                    ordersData.push({ id: doc.id, ...doc.data() });
                 });
-            } else {
-                showToast("현재 서버에 연결되어 있지 않습니다.", "error");
-            }
-        }
-
-        function loadInitialData() {
-            appData = JSON.parse(JSON.stringify(defaultState));
-            saveAppData();
-            showToast('샘플 데이터가 초기화되었습니다.', 'success');
-        }
-
-        // Live Clock
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('system-time').innerText = now.toLocaleString('ko-KR');
-        }, 1000);
-
-        // Tab Switching Logic
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-indigo-50', 'text-indigo-600');
-                btn.classList.add('text-slate-600', 'hover:bg-slate-50');
+                renderTable();
+                updateStats();
+            }, (error) => {
+                console.error("Firestore Error: ", error);
+                showToast("데이터 연동 중 오류가 발생했습니다.", "bg-rose-900 border-rose-600 text-rose-200", "fa-triangle-exclamation");
             });
-
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            const activeBtn = document.getElementById(`nav-${tabId}`);
-            if(activeBtn) {
-                activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-50');
-                activeBtn.classList.add('bg-indigo-50', 'text-indigo-600');
-            }
-
-            renderCurrentTab();
         }
 
-        function renderCurrentTab() {
-            renderDashboard();
-            renderOrderedFolder();
-            renderProcess();
-            renderCompletedFolder();
-            renderMaterials();
-            renderClientsHierarchy();
-            renderShipping();
-        }
+        function renderTable() {
+            const tbody = document.getElementById('order-table-body');
+            const searchVal = document.getElementById('search-input').value.toLowerCase();
+            
+            const filtered = ordersData.filter(o => 
+                (o.product && o.product.toLowerCase().includes(searchVal)) ||
+                (o.client && o.client.toLowerCase().includes(searchVal))
+            );
 
-        // --- 1. Dashboard Renderer ---
-        function renderDashboard() {
-            const totalOrders = appData.orders.length;
-            const orderedCount = appData.orders.filter(o => o.folder === 'ordered').length;
-            const progressCount = appData.orders.filter(o => o.folder === 'progress').length;
-            const completedCount = appData.orders.filter(o => o.folder === 'completed').length;
-
-            document.getElementById('kpi-ordered-count').innerText = orderedCount;
-            document.getElementById('kpi-progress-count').innerText = progressCount;
-            document.getElementById('kpi-completed-count').innerText = completedCount;
-            document.getElementById('kpi-total-orders').innerText = totalOrders;
-
-            // Recent orders table
-            const recentTable = document.getElementById('dashboard-recent-table');
-            recentTable.innerHTML = appData.orders.slice(0, 5).map(order => {
-                let folderBadge = '';
-                if(order.folder === 'ordered') folderBadge = '<span class="px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-full">발주된 제품 (대기)</span>';
-                else if(order.folder === 'progress') folderBadge = '<span class="px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-full">진행중인 제품</span>';
-                else folderBadge = '<span class="px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">완료된 제품</span>';
-
-                return `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-3 font-medium text-slate-800">${order.id}</td>
-                        <td class="p-3 text-slate-700 font-medium">${order.client}</td>
-                        <td class="p-3">${order.itemName}</td>
-                        <td class="p-3">${order.qty} 개</td>
-                        <td class="p-3">${folderBadge}</td>
-                        <td class="p-3 text-slate-500">${order.dueDate}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        // --- 2. Ordered Folder (발주된 제품) ---
-        function renderOrderedFolder() {
-            const tbody = document.getElementById('ordered-table-body');
-            const orderedOrders = appData.orders.filter(o => o.folder === 'ordered');
-
-            if(orderedOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">발주되어 대기 중인 제품이 없습니다. 신규 오더를 등록하세요.</td></tr>`;
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-400">등록된 생산 오더가 없습니다.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = orderedOrders.map(order => `
-                <tr class="hover:bg-slate-50 transition">
-                    <td class="p-3.5 font-medium text-slate-800">${order.id}</td>
-                    <td class="p-3.5 font-semibold text-slate-700">${order.client}</td>
-                    <td class="p-3.5 text-slate-900 font-medium">${order.itemName}</td>
-                    <td class="p-3.5">${order.qty} 개</td>
-                    <td class="p-3.5 text-slate-600">${order.manager}</td>
-                    <td class="p-3.5 text-slate-500">${order.dueDate}</td>
-                    <td class="p-3.5 text-right space-x-2">
-                        <button onclick="moveOrderFolder('${order.id}', 'progress')" class="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition shadow-sm">
-                            <i class="fa-solid fa-play mr-1"></i> 생산 시작 (진행폴더로 이동)
+            tbody.innerHTML = filtered.map(o => `
+                <tr class="hover:bg-slate-700/30 transition-colors">
+                    <td class="py-3.5 px-6 font-medium text-white">
+                        <div>${o.product || '-'}</div>
+                        <div class="text-xs text-slate-400 font-mono">ID: ${o.id.substring(0,6)}...</div>
+                    </td>
+                    <td class="py-3.5 px-6 text-slate-300">${o.client || '-'}</td>
+                    <td class="py-3.5 px-6 text-slate-300 font-semibold">${o.quantity || 0} EA</td>
+                    <td class="py-3.5 px-6">
+                        <select onchange="updateStage('${o.id}', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+                            <option value="자재 발주" ${o.stage === '자재 발주' ? 'selected' : ''}>1단계: 자재 발주</option>
+                            <option value="가공 준비" ${o.stage === '가공 준비' ? 'selected' : ''}>2단계: 가공 준비</option>
+                            <option value="정밀 가공" ${o.stage === '정밀 가공' ? 'selected' : ''}>3단계: 정밀 가공</option>
+                            <option value="품질 검사" ${o.stage === '품질 검사' ? 'selected' : ''}>4단계: 품질 검사</option>
+                            <option value="포장 및 출하" ${o.stage === '포장 및 출하' ? 'selected' : ''}>5단계: 포장 및 출하</option>
+                        </select>
+                    </td>
+                    <td class="py-3.5 px-6 text-xs text-slate-400">${o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
+                    <td class="py-3.5 px-6 text-center">
+                        <button onclick="deleteOrder('${o.id}')" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 p-2 rounded-lg text-xs transition-colors" title="삭제">
+                            <i class="fa-solid fa-trash-can"></i>
                         </button>
-                        <button onclick="deleteOrder('${order.id}')" class="text-slate-400 hover:text-rose-600 transition p-1" title="삭제"><i class="fa-solid fa-trash-can"></i></button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        // --- 3. Process Monitoring & In-Progress Folder (진행중인 제품) ---
-        let currentProcessView = 'kanban';
-
-        function setProcessView(viewType) {
-            currentProcessView = viewType;
-            const kanbanView = document.getElementById('process-kanban-view');
-            const tableView = document.getElementById('process-table-view');
-            const btnKanban = document.getElementById('view-btn-kanban');
-            const btnTable = document.getElementById('view-btn-table');
-
-            if (viewType === 'kanban') {
-                kanbanView.classList.remove('hidden');
-                kanbanView.classList.add('flex');
-                tableView.classList.add('hidden');
-                btnKanban.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
-                btnKanban.classList.remove('text-slate-600');
-                btnTable.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
-                btnTable.classList.add('text-slate-600');
-            } else {
-                kanbanView.classList.add('hidden');
-                kanbanView.classList.remove('flex');
-                tableView.classList.remove('hidden');
-                btnTable.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
-                btnTable.classList.remove('text-slate-600');
-                btnKanban.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
-                btnKanban.classList.add('text-slate-600');
-            }
-            renderProcess();
+        function updateStats() {
+            document.getElementById('stat-total').innerText = ordersData.length + '건';
+            const progressCount = ordersData.filter(o => o.stage !== '포장 및 출하').length;
+            const completedCount = ordersData.filter(o => o.stage === '포장 및 출하').length;
+            document.getElementById('stat-progress').innerText = progressCount + '건';
+            document.getElementById('stat-completed').innerText = completedCount + '건';
         }
 
-        function renderProcess() {
-            const kanbanContainer = document.getElementById('process-kanban-view');
-            const progressOrders = appData.orders.filter(o => o.folder === 'progress');
-            
-            kanbanContainer.innerHTML = MASTER_PROCESSES.map(stage => {
-                const ordersInStage = progressOrders.filter(o => {
-                    const currentStep = o.processSteps[o.currentStageIndex] || o.processSteps[0];
-                    return currentStep.id === stage.id;
-                });
-                return `
-                    <div class="w-80 shrink-0 bg-slate-100/80 rounded-2xl border border-slate-200 p-3.5 flex flex-col h-full">
-                        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                            <span class="text-xs font-bold text-slate-700 flex items-center">
-                                <i class="fa-solid ${stage.icon} mr-2 text-indigo-600"></i> ${stage.name}
-                            </span>
-                            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">${ordersInStage.length}</span>
-                        </div>
-                        <div class="flex-1 overflow-y-auto space-y-3 pr-1">
-                            ${ordersInStage.length === 0 ? '<div class="text-center py-8 text-xs text-slate-400">진행중인 오더 없음</div>' : ''}
-                            ${ordersInStage.map(order => {
-                                const currentStep = order.processSteps[order.currentStageIndex];
-                                const isOutsource = currentStep && currentStep.type === 'outsource';
-                                
-                                const pathBadges = order.processSteps.map((step, idx) => {
-                                    const stepInfo = MASTER_PROCESSES.find(m => m.id === step.id);
-                                    const isCurrent = idx === order.currentStageIndex;
-                                    const isPassed = idx < order.currentStageIndex;
-                                    
-                                    let badgeBg = 'bg-slate-200 text-slate-700';
-                                    if (isCurrent) {
-                                        badgeBg = step.type === 'outsource' ? 'bg-purple-600 text-white font-bold ring-2 ring-purple-300' : 'bg-blue-600 text-white font-bold ring-2 ring-blue-300';
-                                    } else if (isPassed) {
-                                        badgeBg = step.type === 'outsource' ? 'bg-purple-200 text-purple-800' : 'bg-emerald-600 text-white';
-                                    }
-                                    return `<span class="px-1.5 py-0.5 text-[10px] rounded ${badgeBg}" title="${stepInfo?.name || step.id} (${step.type === 'outsource' ? '외주:' + step.outsourceVendor : '사내 진행'})">${stepInfo?.name?.[0] || step.id[0]}</span>`;
-                                }).join(' ');
+        document.getElementById('search-input').addEventListener('input', renderTable);
 
-                                return `
-                                    <div class="bg-white p-4 rounded-xl border ${isOutsource ? 'border-purple-200 bg-purple-50/20' : 'border-slate-200/80'} shadow-sm hover:shadow-md transition space-y-2">
-                                        <div class="flex justify-between items-start">
-                                            <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">${order.id}</span>
-                                            <div class="flex items-center
+        function openOrderModal() {
+            document.getElementById('order-modal').classList.remove('hidden');
+        }
+
+        function closeOrderModal() {
+            document.getElementById('order-modal').classList.add('hidden');
+            document.getElementById('order-form').reset();
+        }
+
+        async function handleOrderSubmit(e) {
+            e.preventDefault();
+            const product = document.getElementById('modal-product').value;
+            const client = document.getElementById('modal-client').value;
+            const quantity = parseInt(document.getElementById('modal-quantity').value);
+            const stage = document.getElementById('modal-stage').value;
+
+            try {
+                const { collection, addDoc } = window.firebaseModules;
+                await addDoc(collection(window.db, "orders"), {
+                    product, client, quantity, stage, createdAt: new Date().toISOString()
+                });
+                closeOrderModal();
+                showToast("생산 오더가 정상적으로 등록되었습니다.", "bg-emerald-950 border-emerald-600 text-emerald-200", "fa-circle-check");
+            } catch (err) {
+                console.error(err);
+                showToast("등록 실패: 권한 또는 네트워크를 확인하세요.", "bg-rose-950 border-rose-600 text-rose-200", "fa-triangle-exclamation");
+            }
+        }
+
+        async function updateStage(id, newStage) {
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                await updateDoc(doc(window.db, "orders", id), { stage: newStage });
+                showToast("공정 단계가 변경되었습니다.", "bg-blue-950 border-blue-600 text-blue-200", "fa-rotate");
+            } catch (err) {
+                console.error(err);
+                showToast("상태 변경 실패", "bg-rose-950 border-rose-600 text-rose-200", "fa-triangle-exclamation");
+            }
+        }
+
+        async function deleteOrder(id) {
+            if (!confirm("정말 이 오더를 삭제하시겠습니까?")) return;
+            try {
+                const { doc, deleteDoc } = window.firebaseModules;
+                await deleteDoc(doc(window.db, "orders", id));
+                showToast("오더가 삭제되었습니다.", "bg-amber-950 border-amber-600 text-amber-200", "fa-trash-can");
+            } catch (err) {
+                console.error(err);
+                showToast("삭제 실패", "bg-rose-950 border-rose-600 text-rose-200", "fa-triangle-exclamation");
+            }
+        }
+
+        function showToast(message, bgColor, icon) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `${bgColor} px-4 py-3 rounded-xl shadow-lg border flex items-center space-x-3 text-sm font-medium transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
